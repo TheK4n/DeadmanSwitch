@@ -100,7 +100,7 @@ func updateTime(seconds int) {
 }
 
 func initDeadmanSwitch() {
-    fmt.Print(time.Now().Unix() + " ")
+    fmt.Print(time.Now().Unix())
     fmt.Println("KIIIIIIIIIIIIIIIIIL!!")
     os.Exit(0)
 }
