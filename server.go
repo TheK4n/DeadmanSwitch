@@ -16,8 +16,8 @@ import (
 
 var PEPPER string = "cd031f46f24d5bd3543"
 var ONE_MONTH_SEC int = 2592000
-var TIME_FILE string = ".time.txt"
-var HASH_FILE string = ".hash.txt"
+var TIME_FILE string = "/var/lib/deadman-switch/time"
+var HASH_FILE string = "/var/lib/deadman-switch/hash"
 var SOCKET_FILE string = "/tmp/deadman.socket"
 
 
