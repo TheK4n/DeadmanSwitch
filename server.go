@@ -16,6 +16,9 @@ import (
 
 var PEPPER string = "cd031f46f24d5bd3543"
 var ONE_MONTH_SEC int = 60// 2592000
+var TIME_FILE string = ".time.txt"
+var HASH_FILE string = ".hash.txt"
+var SOCKET_FILE string = "/tmp/deadman.socket"
 
 func isValidCommand(commands []string, command string) bool {
     for _, com := range commands {
@@ -42,7 +45,7 @@ func parseCommand() string {
 }
 
 func writeHash(hash string) {
-    ioutil.WriteFile("hash.txt", []byte(hash), 0644)
+    ioutil.WriteFile(HASH_FILE, []byte(hash), 0644)
 }
 
 func hashPassphrase(passphrase string, salt string) string {
@@ -61,7 +64,7 @@ func generateSalt() string {
 
 func checkHash(passphrase string) bool {
 
-    storedHashAndSalt, _ := ioutil.ReadFile("hash.txt")
+    storedHashAndSalt, _ := ioutil.ReadFile(HASH_FILE)
 
     storedSalt := storedHashAndSalt[64:]
 
@@ -90,18 +93,18 @@ func initialSetup() {
 }
 
 func getRestOfTime() int {
-    restOfTime, _ := ioutil.ReadFile("time.txt")
+    restOfTime, _ := ioutil.ReadFile(TIME_FILE)
     i, _ := strconv.Atoi(string(restOfTime))
     return i
 }
 
 func updateTime(seconds int) {
     now := time.Now()
-    ioutil.WriteFile("time.txt", []byte(fmt.Sprintf("%d", int(now.Unix()) + seconds)), 0644)
+    ioutil.WriteFile(TIME_FILE, []byte(fmt.Sprintf("%d", int(now.Unix()) + seconds)), 0644)
 }
 
 func initDeadmanSwitch() {
-    log.Printf("KIIIIIIIIIIIIIIIIIL!!")
+    log.Printf("Deadman Switch EXECUTED!")
     os.Exit(0)
 }
 
@@ -151,10 +154,9 @@ func main() {
     switch command {
         case "run":
             go timeout()
-            socketPath := "/tmp/deadman.socket"
-            syscall.Unlink(socketPath) // clean unix socket
+            syscall.Unlink(SOCKET_FILE) // clean unix socket
 
-            listener, _ := net.Listen("unix", socketPath)
+            listener, _ := net.Listen("unix", SOCKET_FILE)
             log.Printf("Server starts")
 
             for {
