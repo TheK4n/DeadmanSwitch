@@ -1,0 +1,14 @@
+[Unit]
+Description=Deadman switch server
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=deadman
+ExecStart=/usr/bin/env deadman-server run
+
+[Install]
+WantedBy=multi-user.target
