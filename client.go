@@ -2,17 +2,20 @@ package main
 
 import (
     "net"
-    "flag"
+    // "flag"
     "fmt"
 )
 
+func secureGetPassword() string {
+    var input string
+    fmt.Print("\033[8m") // Hide input
+    fmt.Scanf("%s", &input)
+    fmt.Print("\033[28m") // Show input
+    return input
+}
 
 func main() {
-    host, port := parseParams()
-    checkParams(host, port)
-
-
-    conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
+    conn, err := net.Dial("unix", "/tmp/deadman.socket")
 
     if err != nil {
        fmt.Println("error:", err)
@@ -23,26 +26,11 @@ func main() {
     conn.Read(reply)
     fmt.Println(string(reply))
 
-    var input string
-    fmt.Scanf("%s", &input)
 
-    conn.Write([]byte(input))
+    conn.Write([]byte(secureGetPassword()))
 
     reply2 := make([]byte, 1024)
     conn.Read(reply2)
     fmt.Println(string(reply2))
 }
 
-func checkParams(host string, port int) {
-    if !(port > 0 && port < 65535) {
-        panic("Wrong port!")
-    }
-}
-
-func parseParams() (string, int) {
-    var host = flag.String("h", "127.0.0.1", "Server host")
-    var port = flag.Int("p", 8081, "Server port")
-
-    flag.Parse()
-    return *host, *port
-}
