@@ -8,31 +8,71 @@ import (
     "crypto/sha256"
     "encoding/hex"
     "syscall"
+    "io/ioutil"
+    "os"
 )
 
 
-func main() {
+var PEPPER string = "asdva8s9dfa789sd897fa8s7d"
 
-    socketPath := "/tmp/deadman.socket"
-    syscall.Unlink(socketPath) // clean unix socket
+func secureGetPassword() string {
+    var input string
+    fmt.Print("\033[8m") // Hide input
+    fmt.Scanf("%s", &input)
+    fmt.Print("\033[28m") // Show input
+    return input
+}
 
-    listener, _ := net.Listen("unix", socketPath)
-    log.Printf("Server starts")
-
-    for {
-        conn, err := listener.Accept()
-        if err != nil {
-            continue
+func validateCommand(commands []string, command string) bool {
+    for _, com := range commands {
+        if command == com {
+            return true
         }
-
-        go HandleClient(conn)
     }
+    return false
+}
+
+func parseCommand() string {
+
+    if len(os.Args) < 2 {
+        panic("Wrong command")
+    }
+
+    command := os.Args[1]
+
+    if !validateCommand([]string{"run", "init"}, command) {
+        panic("Wrong command")
+    }
+    return command
+
+}
+
+func writeHash(hash string) {
+    ioutil.WriteFile("hash.txt", []byte(hash), 0644)
 }
 
 func hashPassphrase(passphrase string) string {
     h := sha256.New()
-    h.Write([]byte(passphrase))
+    h.Write([]byte(passphrase + PEPPER))
     return hex.EncodeToString(h.Sum(nil))
+}
+
+func initialSetup() {
+    fmt.Print("Input passphrase: ")
+    inputPassphrase := secureGetPassword()
+
+    fmt.Println("")
+
+    fmt.Print("Repeat passphrase: ")
+    repeatedPassphrase := secureGetPassword()
+
+    if inputPassphrase == repeatedPassphrase {
+        writeHash(hashPassphrase(inputPassphrase))
+    } else {
+        panic("Passphrases didnt match")
+    }
+
+
 }
 
 func HandleClient(conn net.Conn) {
@@ -49,7 +89,11 @@ func HandleClient(conn net.Conn) {
             break
         }
 
-        if hashPassphrase(string(buf[:readLen])) == "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8" {
+        hash := hashPassphrase(string(buf[:readLen]))
+
+        storedHash, _ := ioutil.ReadFile("hash.txt")
+
+        if hash == string(storedHash) {
             conn.Write([]byte("Accepted")) // пишем в сокет
         } else {
             conn.Write([]byte("Declined")) // пишем в сокет
@@ -58,3 +102,28 @@ func HandleClient(conn net.Conn) {
         break
     }
 }
+
+func main() {
+    command := parseCommand()
+
+    switch command {
+        case "run":
+            socketPath := "/tmp/deadman.socket"
+            syscall.Unlink(socketPath) // clean unix socket
+
+            listener, _ := net.Listen("unix", socketPath)
+            log.Printf("Server starts")
+
+            for {
+                conn, err := listener.Accept()
+                if err != nil {
+                    continue
+                }
+
+                go HandleClient(conn)
+            }
+        case "init":
+            initialSetup()
+    }
+}
+
