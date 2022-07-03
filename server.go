@@ -13,17 +13,9 @@ import (
 )
 
 
-var PEPPER string = "asdva8s9dfa789sd897fa8s7d"
+var PEPPER string = "cd031f46f24d5bd3543"
 
-func secureGetPassword() string {
-    var input string
-    fmt.Print("\033[8m") // Hide input
-    fmt.Scanf("%s", &input)
-    fmt.Print("\033[28m") // Show input
-    return input
-}
-
-func validateCommand(commands []string, command string) bool {
+func isValidCommand(commands []string, command string) bool {
     for _, com := range commands {
         if command == com {
             return true
@@ -40,7 +32,7 @@ func parseCommand() string {
 
     command := os.Args[1]
 
-    if !validateCommand([]string{"run", "init"}, command) {
+    if !isValidCommand([]string{"run", "init"}, command) {
         panic("Wrong command")
     }
     return command
