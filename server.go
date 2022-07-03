@@ -9,6 +9,7 @@ import (
     "syscall"
     "io/ioutil"
     "os"
+    "time"
 )
 
 
@@ -42,10 +43,29 @@ func writeHash(hash string) {
     ioutil.WriteFile("hash.txt", []byte(hash), 0644)
 }
 
-func hashPassphrase(passphrase string) string {
+func hashPassphrase(passphrase string, salt string) string {
     h := sha256.New()
-    h.Write([]byte(passphrase + PEPPER))
+    h.Write([]byte(passphrase + salt + PEPPER))
+    return hex.EncodeToString(h.Sum(nil)) + salt
+}
+
+func generateSalt() string {
+    now := time.Now()
+    nanoSec := now.UnixNano()
+    h := sha256.New()
+    h.Write([]byte(fmt.Sprintf("%d", nanoSec)))
     return hex.EncodeToString(h.Sum(nil))
+}
+
+func checkHash(passphrase string) bool {
+
+    storedHashAndSalt, _ := ioutil.ReadFile("hash.txt")
+
+    storedSalt := storedHashAndSalt[64:]
+
+    hash := hashPassphrase(passphrase, string(storedSalt))
+
+    return hash == string(storedHashAndSalt)
 }
 
 func initialSetup() {
@@ -58,7 +78,7 @@ func initialSetup() {
     repeatedPassphrase := secureGetPassword()
 
     if inputPassphrase == repeatedPassphrase {
-        writeHash(hashPassphrase(inputPassphrase))
+        writeHash(hashPassphrase(inputPassphrase, generateSalt()))
     } else {
         panic("Passphrases didnt match")
     }
@@ -80,11 +100,7 @@ func HandleClient(conn net.Conn) {
             break
         }
 
-        hash := hashPassphrase(string(buf[:readLen]))
-
-        storedHash, _ := ioutil.ReadFile("hash.txt")
-
-        if hash == string(storedHash) {
+        if checkHash(string(buf[:readLen])) {
             conn.Write([]byte("Accepted")) // пишем в сокет
         } else {
             conn.Write([]byte("Declined")) // пишем в сокет
