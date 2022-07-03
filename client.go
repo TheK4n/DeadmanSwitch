@@ -2,17 +2,8 @@ package main
 
 import (
     "net"
-    // "flag"
     "fmt"
 )
-
-func secureGetPassword() string {
-    var input string
-    fmt.Print("\033[8m") // Hide input
-    fmt.Scanf("%s", &input)
-    fmt.Print("\033[28m") // Show input
-    return input
-}
 
 func main() {
     conn, err := net.Dial("unix", "/tmp/deadman.socket")

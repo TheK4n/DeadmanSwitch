@@ -2,7 +2,6 @@ package main
 
 import (
     "net"
-    // "flag"
     "log"
     "fmt"
     "crypto/sha256"
