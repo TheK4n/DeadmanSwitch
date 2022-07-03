@@ -14,11 +14,10 @@ import (
 func main() {
 
     socketPath := "/tmp/deadman.socket"
+    syscall.Unlink(socketPath) // clean unix socket
 
-
-    log.Printf("server starts")
-    syscall.Unlink(socketPath)
     listener, _ := net.Listen("unix", socketPath)
+    log.Printf("Server starts")
 
     for {
         conn, err := listener.Accept()
