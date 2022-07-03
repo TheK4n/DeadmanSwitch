@@ -10,6 +10,7 @@ import (
     "io/ioutil"
     "os"
     "time"
+    "strconv"
 )
 
 
@@ -86,6 +87,35 @@ func initialSetup() {
 
 }
 
+func getRestOfTime() int {
+    restOfTime, _ := ioutil.ReadFile("time.txt")
+    i, _ := strconv.Atoi(string(restOfTime))
+    return i
+}
+
+func updateTime(seconds int) {
+    now := time.Now()
+    ioutil.WriteFile("time.txt", []byte(fmt.Sprintf("%d", int(now.Unix()) + seconds)), 0644)
+}
+
+func initDeadmanSwitch() {
+    fmt.Println("KIIIIIIIIIIIIIIIIIL!!")
+}
+
+func timeout() {
+    for {
+        time.Sleep(15 * time.Second)
+
+        now := time.Now()
+
+        if getRestOfTime() < int(now.Unix()) {
+            initDeadmanSwitch()
+            break
+        }
+
+    }
+}
+
 func HandleClient(conn net.Conn) {
     defer conn.Close()
 
@@ -102,6 +132,7 @@ func HandleClient(conn net.Conn) {
 
         if checkHash(string(buf[:readLen])) {
             conn.Write([]byte("Accepted")) // пишем в сокет
+            updateTime(2592000)
         } else {
             conn.Write([]byte("Declined")) // пишем в сокет
         }
@@ -111,10 +142,12 @@ func HandleClient(conn net.Conn) {
 }
 
 func main() {
+
     command := parseCommand()
 
     switch command {
         case "run":
+            go timeout()
             socketPath := "/tmp/deadman.socket"
             syscall.Unlink(socketPath) // clean unix socket
 
