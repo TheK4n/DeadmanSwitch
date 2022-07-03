@@ -20,6 +20,7 @@ var TIME_FILE string = ".time.txt"
 var HASH_FILE string = ".hash.txt"
 var SOCKET_FILE string = "/tmp/deadman.socket"
 
+
 func isValidCommand(commands []string, command string) bool {
     for _, com := range commands {
         if command == com {
