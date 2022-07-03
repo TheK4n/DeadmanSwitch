@@ -80,6 +80,7 @@ func initialSetup() {
 
     if inputPassphrase == repeatedPassphrase {
         writeHash(hashPassphrase(inputPassphrase, generateSalt()))
+        updateTime(2592000)
     } else {
         panic("Passphrases didnt match")
     }
@@ -99,7 +100,9 @@ func updateTime(seconds int) {
 }
 
 func initDeadmanSwitch() {
+    fmt.Print(time.Now().Unix() + " ")
     fmt.Println("KIIIIIIIIIIIIIIIIIL!!")
+    os.Exit(0)
 }
 
 func timeout() {
@@ -131,10 +134,10 @@ func HandleClient(conn net.Conn) {
         }
 
         if checkHash(string(buf[:readLen])) {
-            conn.Write([]byte("Accepted")) // пишем в сокет
             updateTime(2592000)
+            conn.Write([]byte("Extended until: " + fmt.Sprintf("%s", time.Unix(int64(getRestOfTime()), 0))))
         } else {
-            conn.Write([]byte("Declined")) // пишем в сокет
+            conn.Write([]byte("Declined, expires at: " + fmt.Sprintf("%s", time.Unix(int64(getRestOfTime()), 0))))
         }
         conn.Close()
         break
