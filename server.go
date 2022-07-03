@@ -15,6 +15,7 @@ import (
 
 
 var PEPPER string = "cd031f46f24d5bd3543"
+var ONE_MONTH_SEC int = 60// 2592000
 
 func isValidCommand(commands []string, command string) bool {
     for _, com := range commands {
@@ -80,7 +81,7 @@ func initialSetup() {
 
     if inputPassphrase == repeatedPassphrase {
         writeHash(hashPassphrase(inputPassphrase, generateSalt()))
-        updateTime(2592000)
+        updateTime(ONE_MONTH_SEC)
     } else {
         panic("Passphrases didnt match")
     }
@@ -100,8 +101,7 @@ func updateTime(seconds int) {
 }
 
 func initDeadmanSwitch() {
-    fmt.Print(time.Now().Unix())
-    fmt.Println("KIIIIIIIIIIIIIIIIIL!!")
+    log.Printf("KIIIIIIIIIIIIIIIIIL!!")
     os.Exit(0)
 }
 
@@ -134,7 +134,7 @@ func HandleClient(conn net.Conn) {
         }
 
         if checkHash(string(buf[:readLen])) {
-            updateTime(2592000)
+            updateTime(ONE_MONTH_SEC)
             conn.Write([]byte("Extended until: " + fmt.Sprintf("%s", time.Unix(int64(getRestOfTime()), 0))))
         } else {
             conn.Write([]byte("Declined, expires at: " + fmt.Sprintf("%s", time.Unix(int64(getRestOfTime()), 0))))
