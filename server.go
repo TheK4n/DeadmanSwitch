@@ -12,10 +12,11 @@ import (
     "time"
     "strconv"
     "math/rand"
+    "github.com/lu4p/shred"
 )
 
 
-var ONE_MONTH_SEC int = 2592000
+var ONE_MONTH_SEC int = 60//*60*24*30
 var TIME_FILE string = "/var/lib/deadman-switch/time"
 var HASH_FILE string = "/var/lib/deadman-switch/hash"
 
@@ -77,7 +78,7 @@ func generateSalt() string {
 
 func checkHash(passphrase string) bool {
 
-    storedHashAndSalt, _ := ioutil.ReadFile(HASH_FILE)
+    storedHashAndSalt, _ := ioutil.ReadFile(HASH_FILE) // err!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
 
     storedSalt := storedHashAndSalt[64:]
 
@@ -101,9 +102,8 @@ func initialSetup() {
     } else {
         panic("Passphrases didnt match")
     }
-
-
 }
+
 
 func getRestOfTime() int {
     restOfTime, _ := ioutil.ReadFile(TIME_FILE)
@@ -118,7 +118,17 @@ func updateTime(seconds int) {
 
 func initDeadmanSwitch() {
     log.Printf("Deadman Switch EXECUTED!")
+    shredPrivateFiles()
     os.Exit(0)
+}
+
+func shredPrivateFiles() {
+    files, _ := ioutil.ReadDir("/data/private/")
+    shredconf := shred.Conf{Times: 2, Zeros: true, Remove: true}
+
+    for _, file := range files {
+        shredconf.Path("/data/private/" + file.Name())
+    }
 }
 
 func timeout() {
