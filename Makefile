@@ -14,6 +14,9 @@ install:
 	mkdir /var/lib/deadman-switch
 	chgrp deadman /var/lib/deadman-switch /usr/bin/deadman /usr/bin/deadman-server
 
+clean:
+	rm deadman deadman-server
+
 systemd:
 	cp ./deadman-switch.service /etc/systemd/system/deadman-switch.service
 	systemctl enable deadman-switch

@@ -16,11 +16,15 @@ import (
 )
 
 
-var ONE_MONTH_SEC int = 60//*60*24*30
-var TIME_FILE string = "/var/lib/deadman-switch/time"
-var HASH_FILE string = "/var/lib/deadman-switch/hash"
+const ONE_MONTH_SEC int = 60//*60*24*30
+const PREFIX string = "/var/lib/deadman-switch"
+const PUBLIC_DIR string = PREFIX + "/public"
+const PRIVATE_DIR string = PREFIX + "/private"
+const TIME_FILE string = PREFIX + "/time"
+const HASH_FILE string = PREFIX + "/hash"
 
 
+// checks is used command are valid
 func isValidCommand(commands []string, command string) bool {
     for _, com := range commands {
         if command == com {
@@ -42,7 +46,6 @@ func parseCommand() string {
         panic("Wrong command")
     }
     return command
-
 }
 
 func writeHash(hash string) {
@@ -87,6 +90,7 @@ func checkHash(passphrase string) bool {
     return hash == string(storedHashAndSalt)
 }
 
+// asks master passphrase, write hash and updates time
 func initialSetup() {
     fmt.Print("Input passphrase: ")
     inputPassphrase := secureGetPassword()
@@ -104,7 +108,6 @@ func initialSetup() {
     }
 }
 
-
 func getRestOfTime() int {
     restOfTime, _ := ioutil.ReadFile(TIME_FILE)
     i, _ := strconv.Atoi(string(restOfTime))
@@ -114,20 +117,31 @@ func getRestOfTime() int {
 func updateTime(seconds int) {
     now := time.Now()
     ioutil.WriteFile(TIME_FILE, []byte(fmt.Sprintf("%d", int(now.Unix()) + seconds)), 0600)
+    log.Print("Extended until: " + getCurTime())
 }
 
 func initDeadmanSwitch() {
     log.Printf("Deadman Switch EXECUTED!")
     shredPrivateFiles()
+    publicatePublicFiles()
     os.Exit(0)
 }
 
 func shredPrivateFiles() {
-    files, _ := ioutil.ReadDir("/data/private/")
+    files, _ := ioutil.ReadDir(PRIVATE_DIR) // err !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     shredconf := shred.Conf{Times: 2, Zeros: true, Remove: true}
 
     for _, file := range files {
-        shredconf.Path("/data/private/" + file.Name())
+        shredconf.Path(PRIVATE_DIR + "/" + file.Name())
+    }
+}
+
+func publicatePublicFiles() {
+    files, _ := ioutil.ReadDir(PUBLIC_DIR) // err !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    fmt.Print("Files to publicate: ")
+
+    for _, file := range files {
+        fmt.Print(file.Name() + " ")
     }
 }
 
@@ -143,6 +157,10 @@ func timeout() {
         }
 
     }
+}
+
+func getCurTime() string {
+    return fmt.Sprintf("%s", time.Unix(int64(getRestOfTime()), 0))
 }
 
 func HandleClient(conn net.Conn) {
@@ -161,9 +179,9 @@ func HandleClient(conn net.Conn) {
 
         if checkHash(string(buf[:readLen])) {
             updateTime(ONE_MONTH_SEC)
-            conn.Write([]byte("Extended until: " + fmt.Sprintf("%s", time.Unix(int64(getRestOfTime()), 0))))
+            conn.Write([]byte("Extended until: " + getCurTime()))
         } else {
-            conn.Write([]byte("Declined, expires at: " + fmt.Sprintf("%s", time.Unix(int64(getRestOfTime()), 0))))
+            conn.Write([]byte("Declined, expires at: " + getCurTime()))
         }
         conn.Close()
         break
@@ -172,26 +190,28 @@ func HandleClient(conn net.Conn) {
 
 func main() {
 
+    os.Remove(SOCKET_FILE)
+    syscall.Unlink(SOCKET_FILE) // clean unix socket
     command := parseCommand()
 
     switch command {
         case "run":
             go timeout()
-            syscall.Unlink(SOCKET_FILE) // clean unix socket
 
             listener, _ := net.Listen("unix", SOCKET_FILE)
             log.Printf("Server starts")
+            log.Printf("Expires at: " + getCurTime())
 
             for {
                 conn, err := listener.Accept()
-                if err != nil {
-                    continue
-                }
+                if err != nil { continue }
 
                 go HandleClient(conn)
             }
         case "init":
             initialSetup()
     }
+    syscall.Unlink(SOCKET_FILE) // clean unix socket
+    os.Remove(SOCKET_FILE)
 }
 
