@@ -11,14 +11,13 @@ import (
     "os"
     "time"
     "strconv"
+    "math/rand"
 )
 
 
-var PEPPER string = "cd031f46f24d5bd3543"
 var ONE_MONTH_SEC int = 2592000
 var TIME_FILE string = "/var/lib/deadman-switch/time"
 var HASH_FILE string = "/var/lib/deadman-switch/hash"
-var SOCKET_FILE string = "/tmp/deadman.socket"
 
 
 func isValidCommand(commands []string, command string) bool {
@@ -46,20 +45,33 @@ func parseCommand() string {
 }
 
 func writeHash(hash string) {
-    ioutil.WriteFile(HASH_FILE, []byte(hash), 0644)
+    ioutil.WriteFile(HASH_FILE, []byte(hash), 0600)
+}
+
+func PowInts(x, n int) int {
+   if n == 0 { return 1 }
+   if n == 1 { return x }
+   y := PowInts(x, n/2)
+   if n % 2 == 0 { return y*y }
+   return x*y*y
 }
 
 func hashPassphrase(passphrase string, salt string) string {
-    h := sha256.New()
-    h.Write([]byte(passphrase + salt + PEPPER))
-    return hex.EncodeToString(h.Sum(nil)) + salt
+    prevHash := passphrase
+    iterations := PowInts(2, 16)
+
+    for i:=0; i < iterations; i++ {
+        h := sha256.New()
+        h.Write([]byte(prevHash + salt))
+        prevHash = hex.EncodeToString(h.Sum(nil))
+    }
+    return prevHash + salt
 }
 
 func generateSalt() string {
-    now := time.Now()
-    nanoSec := now.UnixNano()
+    rand.Seed(time.Now().UnixNano())
     h := sha256.New()
-    h.Write([]byte(fmt.Sprintf("%d", nanoSec)))
+    h.Write([]byte(fmt.Sprintf("%d", rand.Float64)))
     return hex.EncodeToString(h.Sum(nil))
 }
 
@@ -101,7 +113,7 @@ func getRestOfTime() int {
 
 func updateTime(seconds int) {
     now := time.Now()
-    ioutil.WriteFile(TIME_FILE, []byte(fmt.Sprintf("%d", int(now.Unix()) + seconds)), 0644)
+    ioutil.WriteFile(TIME_FILE, []byte(fmt.Sprintf("%d", int(now.Unix()) + seconds)), 0600)
 }
 
 func initDeadmanSwitch() {

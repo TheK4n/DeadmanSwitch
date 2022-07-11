@@ -5,8 +5,9 @@ import (
     "fmt"
 )
 
+
 func main() {
-    conn, err := net.Dial("unix", "/tmp/deadman.socket")
+    conn, err := net.Dial("unix", SOCKET_FILE)
 
     if err != nil {
        fmt.Println("error:", err)
