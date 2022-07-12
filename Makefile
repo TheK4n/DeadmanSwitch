@@ -10,9 +10,10 @@ install:
 	chmod g+x /usr/bin/deadman /usr/bin/deadman-server
 	
 	groupadd deadman
+	useradd -g deadman deadman
 	umask 006
 	mkdir /var/lib/deadman-switch
-	chgrp deadman /var/lib/deadman-switch /usr/bin/deadman /usr/bin/deadman-server
+	chown deadman:deadman /var/lib/deadman-switch /usr/bin/deadman /usr/bin/deadman-server
 
 clean:
 	rm deadman deadman-server
