@@ -15,6 +15,7 @@ import (
 	"time"
     "net/http"
     "net/url"
+    "encoding/binary"
 )
 
 const ONE_MONTH_SEC int = 60 * 60 * 24 * 30
@@ -83,8 +84,22 @@ func hashPassphrase(passphrase string, salt string) string {
 	return prevHash + salt
 }
 
+func genTrulyRandom() int64 {
+    file, _ := os.Open("/dev/urandom")
+    defer file.Close()
+
+    const maxSz = 256
+    // create buffer
+    b := make([]byte, maxSz)
+
+    // read content to buffer
+    file.Read(b)
+
+    return int64(binary.BigEndian.Uint64(b))
+}
+
 func generateSalt() string {
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(genTrulyRandom())
 	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%f", rand.Float64())))
 	return hex.EncodeToString(h.Sum(nil))
