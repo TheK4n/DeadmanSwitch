@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"github.com/lu4p/shred"
@@ -9,13 +10,12 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"syscall"
 	"time"
-    "net/http"
-    "net/url"
-    "encoding/binary"
 )
 
 const ONE_MONTH_SEC int = 60 * 60 * 24 * 30
@@ -72,7 +72,7 @@ func PowInts(x, n int) int {
 	return x * y * y
 }
 
-func hashPassphrase(passphrase string, salt string) string {
+func hashPassphrase(passphrase, salt string) string {
 	prevHash := passphrase
 	iterations := PowInts(2, 16)
 
@@ -85,17 +85,17 @@ func hashPassphrase(passphrase string, salt string) string {
 }
 
 func genTrulyRandom() int64 {
-    file, _ := os.Open("/dev/urandom")
-    defer file.Close()
+	file, _ := os.Open("/dev/urandom")
+	defer file.Close()
 
-    const maxSz = 256
-    // create buffer
-    b := make([]byte, maxSz)
+	const maxSz = 256
+	// create buffer
+	b := make([]byte, maxSz)
 
-    // read content to buffer
-    file.Read(b)
+	// read content to buffer
+	file.Read(b)
 
-    return int64(binary.BigEndian.Uint64(b))
+	return int64(binary.BigEndian.Uint64(b))
 }
 
 func generateSalt() string {
@@ -174,24 +174,24 @@ func publicatePublicFiles() error {
 	fmt.Print("Files to publicate: ")
 
 	for _, file := range files {
-        text, _ := ioutil.ReadFile(PUBLIC_DIR + "/" + file.Name())
-        sendTelegramMessage(string(text))
+		text, _ := ioutil.ReadFile(PUBLIC_DIR + "/" + file.Name())
+		sendTelegramMessage(string(text))
 	}
 	return err
 }
 
 func sendTelegramMessage(text string) {
 
-    groupId := os.Getenv("GROUP_ID")
-    token := os.Getenv("TOKEN")
-    sendMessageUrl := "https://api.telegram.org/bot"+ token + "/sendMessage"
+	groupId := os.Getenv("GROUP_ID")
+	token := os.Getenv("TOKEN")
+	sendMessageUrl := "https://api.telegram.org/bot" + token + "/sendMessage"
 
-    data := url.Values{
-        "chat_id": {groupId},
-        "text": {text},
-    }
+	data := url.Values{
+		"chat_id": {groupId},
+		"text":    {text},
+	}
 
-    http.PostForm(sendMessageUrl, data)
+	http.PostForm(sendMessageUrl, data)
 }
 
 func timeout() {
@@ -248,9 +248,9 @@ func main() {
 		go timeout()
 
 		listener, _ := net.Listen("unix", SOCKET_FILE)
-        os.Open(SOCKET_FILE)
-        os.Chown(SOCKET_FILE, 0, 1015)
-        os.Chmod(SOCKET_FILE, 0660)
+		os.Open(SOCKET_FILE)
+		os.Chown(SOCKET_FILE, 0, 1015)
+		os.Chmod(SOCKET_FILE, 0660)
 		log.Printf("Server starts")
 		log.Printf("Expires at: " + getCurTime())
 
