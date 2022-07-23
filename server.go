@@ -248,6 +248,9 @@ func main() {
 		go timeout()
 
 		listener, _ := net.Listen("unix", SOCKET_FILE)
+        os.Open(SOCKET_FILE)
+        os.Chown(SOCKET_FILE, 0, 1015)
+        os.Chmod(SOCKET_FILE, 0660)
 		log.Printf("Server starts")
 		log.Printf("Expires at: " + getCurTime())
 

@@ -5,15 +5,11 @@ build:
 	go build -o deadman-server server.go utils.go
 
 install:
-	cp deadman /usr/bin/deadman
-	cp deadman-server /usr/bin/deadman-server
-	chmod g+x /usr/bin/deadman /usr/bin/deadman-server
-	
-	groupadd deadman
-	useradd -g deadman deadman
-	umask 006
+	groupadd -g 1015 deadman
 	mkdir /var/lib/deadman-switch
-	chown deadman:deadman /var/lib/deadman-switch /usr/bin/deadman /usr/bin/deadman-server
+	chmod 700 /var/lib/deadman-switch
+	install -m 750 -g deadman -o root ./deadman /usr/bin/deadman
+	install -m 700 -o root ./deadman-server /usr/bin/deadman-server
 
 clean:
 	rm deadman deadman-server
