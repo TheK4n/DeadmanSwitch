@@ -8,7 +8,6 @@ WorkingDirectory=/var/lib/deadman-switch
 Type=simple
 Restart=always
 RestartSec=1
-User=deadman
 ExecStart=/usr/bin/env deadman-server run
 
 [Install]
