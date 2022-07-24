@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/lu4p/shred"
+	"github.com/lu4p/shred" // unix commmand shred
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -29,18 +29,18 @@ var COMMANDS = []string{"run", "init"}
 
 func kill(msg string, code int) {
 	err := fmt.Errorf(msg)
-	fmt.Println(err.Error())
+	fmt.Println("deadman:", err.Error())
 	os.Exit(code)
 }
 
 func parseCommand() string {
 
 	if len(os.Args) < 2 {
-		kill("No command", 1)
+		kill("Usage: deadman-server COMMAND", 1)
 	}
 	command := os.Args[1]
 	if !isValidCommand(COMMANDS, command) {
-		kill("Wrong command", 1)
+		kill("'"+os.Args[1]+"' is not a deadman-server command.", 1)
 	}
 	return command
 }
@@ -54,6 +54,7 @@ func isValidCommand(commands []string, command string) bool {
 	}
 	return false
 }
+
 func writeHash(hash string) error {
 	return ioutil.WriteFile(HASH_FILE, []byte(hash), 0600)
 }
