@@ -19,19 +19,12 @@ import (
 )
 
 const ONE_MONTH_SEC int = 60 * 60 * 24 * 30
-const PREFIX string = "/var/lib/deadman-switch"
-const PUBLIC_DIR = PREFIX + "/public"
-const PRIVATE_DIR = PREFIX + "/private"
-const TIME_FILE = PREFIX + "/time"
-const HASH_FILE = PREFIX + "/hash"
-
-var COMMANDS = []string{"run", "init"}
-
-func kill(msg string, code int) {
-	err := fmt.Errorf(msg)
-	fmt.Println("deadman:", err.Error())
-	os.Exit(code)
-}
+const _PREFIX string = "/var/lib/deadman-switch"
+const PUBLIC_DIR = _PREFIX + "/public"
+const PRIVATE_DIR = _PREFIX + "/private"
+const TIME_FILE = _PREFIX + "/time"
+const HASH_FILE = _PREFIX + "/hash"
+const COMMANDS = []string{"run", "init"}
 
 func parseCommand() string {
 
@@ -45,7 +38,7 @@ func parseCommand() string {
 	return command
 }
 
-// checks is used command are valid
+// check is used command are valid
 func isValidCommand(commands []string, command string) bool {
 	for _, com := range commands {
 		if command == com {
@@ -59,20 +52,6 @@ func writeHash(hash string) error {
 	return ioutil.WriteFile(HASH_FILE, []byte(hash), 0600)
 }
 
-func PowInts(x, n int) int {
-	if n == 0 {
-		return 1
-	}
-	if n == 1 {
-		return x
-	}
-	y := PowInts(x, n/2)
-	if n%2 == 0 {
-		return y * y
-	}
-	return x * y * y
-}
-
 func hashPassphrase(passphrase, salt string) string {
 	prevHash := passphrase
 	iterations := PowInts(2, 16)
@@ -83,6 +62,13 @@ func hashPassphrase(passphrase, salt string) string {
 		prevHash = hex.EncodeToString(h.Sum(nil))
 	}
 	return prevHash + salt
+}
+
+func generateSalt() string {
+	rand.Seed(genTrulyRandom())
+	h := sha256.New()
+	h.Write([]byte(fmt.Sprintf("%f", rand.Float64())))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func genTrulyRandom() int64 {
@@ -99,15 +85,7 @@ func genTrulyRandom() int64 {
 	return int64(binary.BigEndian.Uint64(b))
 }
 
-func generateSalt() string {
-	rand.Seed(genTrulyRandom())
-	h := sha256.New()
-	h.Write([]byte(fmt.Sprintf("%f", rand.Float64())))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
 func checkHash(passphrase string) (bool, error) {
-
 	storedHashAndSalt, err := ioutil.ReadFile(HASH_FILE)
 	storedSalt := storedHashAndSalt[64:]
 	hash := hashPassphrase(passphrase, string(storedSalt))
@@ -205,7 +183,6 @@ func timeout() {
 			initDeadmanSwitch()
 			break
 		}
-
 	}
 }
 
@@ -213,14 +190,14 @@ func getCurTime() string {
 	return fmt.Sprintf("%s", time.Unix(int64(getRestOfTime()), 0))
 }
 
-func HandleClient(conn net.Conn) {
+func handleClient(conn net.Conn) {
 	defer conn.Close()
 
-	buf := make([]byte, 32) // буфер для чтения клиентских данных
+	buf := make([]byte, 32) // buffer for client data
 	for {
-		conn.Write([]byte("Write passphrase:")) // пишем в сокет
+		conn.Write([]byte("Write passphrase:"))
 
-		readLen, err := conn.Read(buf) // читаем из сокета
+		readLen, err := conn.Read(buf)
 		if err != nil {
 			fmt.Println(err)
 			break
@@ -239,9 +216,9 @@ func HandleClient(conn net.Conn) {
 }
 
 func main() {
-
 	os.Remove(SOCKET_FILE)
 	syscall.Unlink(SOCKET_FILE) // clean unix socket
+
 	command := parseCommand()
 
 	switch command {
@@ -261,7 +238,7 @@ func main() {
 				continue
 			}
 
-			go HandleClient(conn)
+			go handleClient(conn)
 		}
 	case "init":
 		initialSetup()
