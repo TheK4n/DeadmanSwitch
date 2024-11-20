@@ -1,8 +1,11 @@
 package main
 
-import "fmt"
+import (
+    "fmt"
+    "os"
+)
 
-const SOCKET_FILE string = "/var/run/deadman.sock"
+const SOCKET_FILE string = "/tmp/deadman.sock"
 
 // hidden get password from stdin
 func secureGetPassword() string {

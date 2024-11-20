@@ -5,26 +5,23 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/lu4p/shred" // unix commmand shred
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
-	"net/http"
-	"net/url"
 	"os"
+    "os/exec"
 	"strconv"
 	"syscall"
 	"time"
 )
 
-const ONE_MONTH_SEC int = 60 * 60 * 24 * 30
-const _PREFIX string = "/var/lib/deadman-switch"
+const ONE_MONTH_SEC int = 60 //60 * 60 * 24 * 30
+const _PREFIX string = "/home/thek4n/.local/deadman"
 const PUBLIC_DIR = _PREFIX + "/public"
 const PRIVATE_DIR = _PREFIX + "/private"
 const TIME_FILE = _PREFIX + "/time"
 const HASH_FILE = _PREFIX + "/hash"
-const COMMANDS = []string{"run", "init"}
+var COMMANDS = []string{"run", "init"}
 
 func parseCommand() string {
 
@@ -49,7 +46,7 @@ func isValidCommand(commands []string, command string) bool {
 }
 
 func writeHash(hash string) error {
-	return ioutil.WriteFile(HASH_FILE, []byte(hash), 0600)
+	return os.WriteFile(HASH_FILE, []byte(hash), 0600)
 }
 
 func hashPassphrase(passphrase, salt string) string {
@@ -65,9 +62,9 @@ func hashPassphrase(passphrase, salt string) string {
 }
 
 func generateSalt() string {
-	rand.Seed(genTrulyRandom())
+    r := rand.New(rand.NewSource(genTrulyRandom()))
 	h := sha256.New()
-	h.Write([]byte(fmt.Sprintf("%f", rand.Float64())))
+	h.Write([]byte(fmt.Sprintf("%f", r.Float64())))
 	return hex.EncodeToString(h.Sum(nil))
 }
 
@@ -86,7 +83,7 @@ func genTrulyRandom() int64 {
 }
 
 func checkHash(passphrase string) (bool, error) {
-	storedHashAndSalt, err := ioutil.ReadFile(HASH_FILE)
+	storedHashAndSalt, err := os.ReadFile(HASH_FILE)
 	storedSalt := storedHashAndSalt[64:]
 	hash := hashPassphrase(passphrase, string(storedSalt))
 	return hash == string(storedHashAndSalt), err
@@ -111,14 +108,14 @@ func initialSetup() {
 }
 
 func getRestOfTime() int {
-	restOfTime, _ := ioutil.ReadFile(TIME_FILE)
+	restOfTime, _ := os.ReadFile(TIME_FILE)
 	i, _ := strconv.Atoi(string(restOfTime))
 	return i
 }
 
 func updateTime(seconds int) {
 	now := time.Now()
-	err := ioutil.WriteFile(TIME_FILE, []byte(fmt.Sprintf("%d", int(now.Unix())+seconds)), 0600)
+	err := os.WriteFile(TIME_FILE, []byte(fmt.Sprintf("%d", int(now.Unix())+seconds)), 0600)
 	if err != nil {
 		return
 	}
@@ -127,50 +124,13 @@ func updateTime(seconds int) {
 
 func initDeadmanSwitch() {
 	log.Printf("Deadman Switch EXECUTED!")
-	err := shredPrivateFiles()
-	if err != nil {
-		log.Printf("error: while shreading files")
-	}
-	err = publicatePublicFiles()
-	if err != nil {
-		log.Printf("error: while publicating files")
-	}
+
+    cmd := exec.Command("touch", "/home/thek4n/DEADMAN")
+    if err := cmd.Run(); err != nil {
+        fmt.Println("Error: ", err)
+    }
+
 	os.Exit(0)
-}
-
-func shredPrivateFiles() error {
-	files, err := ioutil.ReadDir(PRIVATE_DIR)
-	shredconf := shred.Conf{Times: 2, Zeros: true, Remove: true}
-
-	for _, file := range files {
-		shredconf.Path(PRIVATE_DIR + "/" + file.Name())
-	}
-	return err
-}
-
-func publicatePublicFiles() error {
-	files, err := ioutil.ReadDir(PUBLIC_DIR)
-	fmt.Print("Files to publicate: ")
-
-	for _, file := range files {
-		text, _ := ioutil.ReadFile(PUBLIC_DIR + "/" + file.Name())
-		sendTelegramMessage(string(text))
-	}
-	return err
-}
-
-func sendTelegramMessage(text string) {
-
-	groupId := os.Getenv("GROUP_ID")
-	token := os.Getenv("TOKEN")
-	sendMessageUrl := "https://api.telegram.org/bot" + token + "/sendMessage"
-
-	data := url.Values{
-		"chat_id": {groupId},
-		"text":    {text},
-	}
-
-	http.PostForm(sendMessageUrl, data)
 }
 
 func timeout() {
