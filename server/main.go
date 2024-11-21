@@ -16,20 +16,15 @@ import (
 	common "github.com/thek4n/DeadmanSwitch/common"
 )
 
-const ONE_MONTH_SEC int = 60 * 60 * 24 * 30
-const TIMEOUT_SEC int = ONE_MONTH_SEC
-
 var PREFIX = os.Getenv("HOME") + "/.local/deadman"
 var TIME_FILE = PREFIX + "/time"
 var HASH_FILE = PREFIX + "/hash"
 var SOCKET_FILE = common.GetSocketPath()
+const DEADMAN_TIMEOUT_VARIABLE_NAME = "DEADMAN_TIMEOUT"
+const DEADMAN_COMMAND_VARIABLE_NAME = "DEADMAN_COMMAND"
 
 
 func main() {
-	if os.Getenv("DEADMAN_COMMAND") == "" {
-		common.Die("DEADMAN_COMMAND variable not set" ,1)
-	}
-
 	sigChan := make(chan os.Signal, 1)
 
 	signal.Notify(
@@ -65,12 +60,24 @@ func handleCommand(command string) {
 			runDaemon()
 		case "init":
 			initialSetup()
+		case "--help":
+			fmt.Println("run\ninit")
+			os.Exit(0)
 		default:
 			common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
 		}
 }
 
 func runDaemon() {
+	if os.Getenv(DEADMAN_COMMAND_VARIABLE_NAME) == "" {
+		common.Die(DEADMAN_COMMAND_VARIABLE_NAME + " variable not set" ,1)
+	}
+
+	_, getTimeoutErr := getTimeoutSec()
+	if getTimeoutErr != nil {
+		common.Die(DEADMAN_TIMEOUT_VARIABLE_NAME +" is invalid" ,1)
+	}
+
 	go timeoutDaemon()
 
 	listener, listen_err := net.Listen("unix", common.GetSocketPath())
@@ -165,7 +172,10 @@ func handleClient(conn net.Conn) {
 
 		switch command {
 			case "extend":
-				updateExpireMomentErr := updateExpireMoment(TIMEOUT_SEC)
+
+				timeoutSec, _ := getTimeoutSec()
+
+				updateExpireMomentErr := updateExpireMoment(timeoutSec)
 				if updateExpireMomentErr != nil {
 					fmt.Println("Update expire moment error" + updateExpireMomentErr.Error())
 					conn.Close()
@@ -202,6 +212,13 @@ func writeHash(hash string) error {
 }
 
 func initialSetup() {
+	timeoutSec, getTimeoutErr := getTimeoutSec()
+
+	if getTimeoutErr != nil {
+		common.Die("Error while handle timeout sec", 1)
+		return
+	}
+
 	firstPassphrase := askPassphrase()
 	secondPassphrase := askPassphrase()
 
@@ -216,7 +233,7 @@ func initialSetup() {
 		return
 	}
 
-	updateExpireMomentErr := updateExpireMoment(TIMEOUT_SEC)
+	updateExpireMomentErr := updateExpireMoment(timeoutSec)
 	if updateExpireMomentErr != nil {
 		common.Die("Error while writing time file", 1)
 		return
@@ -231,6 +248,10 @@ func askPassphrase() string {
 
 func isPassphrasesMatch(firstPassphrase string, secondPassphrase string) bool {
 	return firstPassphrase == secondPassphrase
+}
+
+func getTimeoutSec() (int, error) {
+	return strconv.Atoi(os.Getenv(DEADMAN_TIMEOUT_VARIABLE_NAME))
 }
 
 func getRestOfTime() int {
@@ -249,7 +270,7 @@ func calculateExpireMoment(timeout int64) string {
 }
 
 func initDeadmanSwitch() {
-	commandSlice := strings.Fields(os.Getenv("DEADMAN_COMMAND"))
+	commandSlice := strings.Fields(os.Getenv(DEADMAN_COMMAND_VARIABLE_NAME))
 
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 
