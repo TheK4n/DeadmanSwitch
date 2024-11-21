@@ -1,10 +1,11 @@
 package main
 
 import (
-	common "../common"
 	"fmt"
 	"net"
 	"os"
+
+	common "github.com/thek4n/DeadmanSwitch/common"
 )
 
 var SOCKET_FILE = common.GetSocketPath()

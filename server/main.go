@@ -13,7 +13,7 @@ import (
 	"time"
 	"strings"
 
-	common "../common"
+	common "github.com/thek4n/DeadmanSwitch/common"
 )
 
 const ONE_MONTH_SEC int = 60 * 60 * 24 * 30
