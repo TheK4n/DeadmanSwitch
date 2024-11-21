@@ -6,7 +6,7 @@ import (
 )
 
 func GetSocketPath() string {
-	socketEnv := os.Getenv("SOCKET")
+	socketEnv := os.Getenv("DEADMAN_SOCKET")
 
 	if socketEnv != "" {
 		return socketEnv

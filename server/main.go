@@ -11,18 +11,25 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+	"strings"
 
 	common "../common"
 )
 
-const TIMEOUT_SEC int = 300
+const ONE_MONTH_SEC int = 60 * 60 * 24 * 30
+const TIMEOUT_SEC int = ONE_MONTH_SEC
 
 var PREFIX = os.Getenv("HOME") + "/.local/deadman"
 var TIME_FILE = PREFIX + "/time"
 var HASH_FILE = PREFIX + "/hash"
 var SOCKET_FILE = common.GetSocketPath()
 
+
 func main() {
+	if os.Getenv("DEADMAN_COMMAND") == "" {
+		common.Die("DEADMAN_COMMAND variable not set" ,1)
+	}
+
 	sigChan := make(chan os.Signal, 1)
 
 	signal.Notify(
@@ -54,13 +61,13 @@ func parseCommand(args []string) string {
 
 func handleCommand(command string) {
 	switch command {
-	case "run":
-		runDaemon()
-	case "init":
-		initialSetup()
-	default:
-		common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
-	}
+		case "run":
+			runDaemon()
+		case "init":
+			initialSetup()
+		default:
+			common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
+		}
 }
 
 func runDaemon() {
@@ -115,7 +122,7 @@ func timeoutDaemon() {
 func handleClient(conn net.Conn) {
 	defer conn.Close()
 
-	buf := make([]byte, 32)
+	buf := make([]byte, 64)
 	for {
 		_, writeErr := conn.Write([]byte("Write passphrase:"))
 		if writeErr != nil {
@@ -131,7 +138,18 @@ func handleClient(conn net.Conn) {
 			break
 		}
 
-		isValidHash, checkHashError := CheckHash(string(buf[:readLen]))
+		messageFromClient := strings.Fields(string(buf[:readLen]))
+
+		if len(messageFromClient) < 2 {
+			conn.Write([]byte("Declined, expires at: " + getExpireMoment()))
+			conn.Close()
+			break
+		}
+
+		command := messageFromClient[0]
+		hash := messageFromClient[1]
+
+		isValidHash, checkHashError := CheckHash(hash)
 
 		if checkHashError != nil {
 			fmt.Println("Check hash error" + checkHashError.Error())
@@ -139,22 +157,37 @@ func handleClient(conn net.Conn) {
 			break
 		}
 
-		if isValidHash {
-			updateExpireMomentErr := updateExpireMoment(TIMEOUT_SEC)
-			if updateExpireMomentErr != nil {
-				fmt.Println("Update expire moment error" + updateExpireMomentErr.Error())
-				conn.Close()
-				break
-			}
-
-			log.Print("Extended until: " + getExpireMoment())
-			conn.Write([]byte("Extended until: " + getExpireMoment()))
-		} else {
+		if ! isValidHash {
 			conn.Write([]byte("Declined, expires at: " + getExpireMoment()))
+			conn.Close()
+			break
 		}
 
+		switch command {
+			case "extend":
+				updateExpireMomentErr := updateExpireMoment(TIMEOUT_SEC)
+				if updateExpireMomentErr != nil {
+					fmt.Println("Update expire moment error" + updateExpireMomentErr.Error())
+					conn.Close()
+					break
+				}
+
+				log.Print("Extended until: " + getExpireMoment())
+				conn.Write([]byte("Extended until: " + getExpireMoment()))
+
+				conn.Close()
+				break
+
+			case "execute":
+				initDeadmanSwitch()
+				conn.Close()
+				break
+		}
+
+		conn.Write([]byte("Declined, expires at: " + getExpireMoment()))
 		conn.Close()
 		break
+
 	}
 }
 
@@ -216,13 +249,17 @@ func calculateExpireMoment(timeout int64) string {
 }
 
 func initDeadmanSwitch() {
-	cmd := exec.Command("touch", "/home/thek4n/DEADMAN")
-	if err := cmd.Run(); err != nil {
-		fmt.Println("Error: ", err)
-		cleanupSocket(SOCKET_FILE)
-		os.Exit(0)
+	commandSlice := strings.Fields(os.Getenv("DEADMAN_COMMAND"))
+
+	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
+
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		fmt.Println("Error:", err.Error())
 	}
 
+	fmt.Println(string(output))
 	log.Printf("Deadman Switch EXECUTED!")
 	cleanupSocket(SOCKET_FILE)
 	os.Exit(0)

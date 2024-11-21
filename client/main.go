@@ -4,11 +4,35 @@ import (
 	common "../common"
 	"fmt"
 	"net"
+	"os"
 )
 
 var SOCKET_FILE = common.GetSocketPath()
 
 func main() {
+	handleCommand(parseCommand(os.Args))
+}
+
+func parseCommand(args []string) string {
+	if len(args) < 2 {
+		common.Die("Usage: "+args[0]+" COMMAND", 1)
+	}
+	command := args[1]
+	return command
+}
+
+func handleCommand(command string) {
+	switch command {
+		case "execute":
+			sendToServer(command)
+		case "extend":
+			sendToServer(command)
+		default:
+			common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
+	}
+}
+
+func sendToServer(command string) {
 	conn, err := net.Dial("unix", SOCKET_FILE)
 
 	if err != nil {
@@ -20,7 +44,8 @@ func main() {
 	conn.Read(reply)
 	fmt.Println(string(reply))
 
-	conn.Write([]byte(common.SecureGetPassword()))
+	messageToServer := command + " " + common.SecureGetPassword()
+	conn.Write([]byte(messageToServer))
 
 	reply2 := make([]byte, 1024)
 	conn.Read(reply2)
