@@ -28,6 +28,9 @@ func handleCommand(command string) {
 			sendToServer(command)
 		case "extend":
 			sendToServer(command)
+		case "--help":
+			fmt.Println("execute\nextend")
+			os.Exit(0)
 		default:
 			common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
 	}
