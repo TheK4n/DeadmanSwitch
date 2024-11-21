@@ -6,8 +6,10 @@ import (
 	"net"
 )
 
+var SOCKET_FILE = common.GetSocketPath()
+
 func main() {
-	conn, err := net.Dial("unix", common.SOCKET_FILE)
+	conn, err := net.Dial("unix", SOCKET_FILE)
 
 	if err != nil {
 		fmt.Println("error:", err)

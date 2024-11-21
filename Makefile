@@ -2,8 +2,8 @@ all: build
 
 
 build:
-	GO111MODULE=off go build -o deadman ./client
-	GO111MODULE=off go build -o deadmand ./server
+	CGO_ENABLED=0 GO111MODULE=off go build -ldflags=-w -o deadman ./client
+	CGO_ENABLED=0 GO111MODULE=off go build -ldflags=-w -o deadmand ./server
 
 clean:
-	rm -f deadman deadman-server
+	rm -f deadman deadmand

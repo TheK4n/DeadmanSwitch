@@ -1,7 +1,6 @@
 package main
 
 import (
-	common "../common"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -23,7 +22,7 @@ func CheckHash(passphrase string) (bool, error) {
 
 func hashPassphrase(passphrase, salt string) string {
 	prevHash := passphrase
-	iterations := common.PowInts(2, 16)
+	iterations := PowInts(2, 16)
 
 	for i := 0; i < iterations; i++ {
 		h := sha256.New()
@@ -31,6 +30,20 @@ func hashPassphrase(passphrase, salt string) string {
 		prevHash = hex.EncodeToString(h.Sum(nil))
 	}
 	return prevHash + salt
+}
+
+func PowInts(x, n int) int {
+	if n == 0 {
+		return 1
+	}
+	if n == 1 {
+		return x
+	}
+	y := PowInts(x, n/2)
+	if n%2 == 0 {
+		return y * y
+	}
+	return x * y * y
 }
 
 func generateSalt() string {

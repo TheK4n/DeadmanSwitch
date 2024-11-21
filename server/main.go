@@ -20,6 +20,7 @@ const TIMEOUT_SEC int = 300
 var PREFIX = os.Getenv("HOME") + "/.local/deadman"
 var TIME_FILE = PREFIX + "/time"
 var HASH_FILE = PREFIX + "/hash"
+var SOCKET_FILE = common.GetSocketPath()
 
 func main() {
 	sigChan := make(chan os.Signal, 1)
@@ -33,7 +34,7 @@ func main() {
 
 	go func() {
 		s := <-sigChan
-		cleanupSocket(common.SOCKET_FILE)
+		cleanupSocket(SOCKET_FILE)
 
 		fmt.Println(s)
 		os.Exit(137)
@@ -45,7 +46,7 @@ func main() {
 
 func parseCommand(args []string) string {
 	if len(args) < 2 {
-		common.Kill("Usage: "+args[0]+" COMMAND", 1)
+		common.Die("Usage: "+args[0]+" COMMAND", 1)
 	}
 	command := args[1]
 	return command
@@ -58,24 +59,24 @@ func handleCommand(command string) {
 	case "init":
 		initialSetup()
 	default:
-		common.Kill("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
+		common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
 	}
 }
 
 func runDaemon() {
 	go timeoutDaemon()
 
-	listener, listen_err := net.Listen("unix", common.SOCKET_FILE)
+	listener, listen_err := net.Listen("unix", common.GetSocketPath())
 	if listen_err != nil {
-		cleanupSocket(common.SOCKET_FILE)
-		common.Kill("Error listen socket file"+listen_err.Error(), 1)
+		cleanupSocket(SOCKET_FILE)
+		common.Die("Error listen socket file"+listen_err.Error(), 1)
 		return
 	}
 
-	chmod_err := os.Chmod(common.SOCKET_FILE, 0660)
+	chmod_err := os.Chmod(SOCKET_FILE, 0660)
 	if chmod_err != nil {
-		cleanupSocket(common.SOCKET_FILE)
-		common.Kill("Error chmod socket file"+chmod_err.Error(), 1)
+		cleanupSocket(SOCKET_FILE)
+		common.Die("Error chmod socket file"+chmod_err.Error(), 1)
 		return
 	}
 
@@ -172,19 +173,19 @@ func initialSetup() {
 	secondPassphrase := askPassphrase()
 
 	if !isPassphrasesMatch(firstPassphrase, secondPassphrase) {
-		common.Kill("Passphrases didnt match", 1)
+		common.Die("Passphrases didnt match", 1)
 		return
 	}
 
 	err := WriteHashFromPassphrase(firstPassphrase)
 	if err != nil {
-		common.Kill("Error while writing hash file", 1)
+		common.Die("Error while writing hash file", 1)
 		return
 	}
 
 	updateExpireMomentErr := updateExpireMoment(TIMEOUT_SEC)
 	if updateExpireMomentErr != nil {
-		common.Kill("Error while writing time file", 1)
+		common.Die("Error while writing time file", 1)
 		return
 	}
 }
@@ -218,12 +219,12 @@ func initDeadmanSwitch() {
 	cmd := exec.Command("touch", "/home/thek4n/DEADMAN")
 	if err := cmd.Run(); err != nil {
 		fmt.Println("Error: ", err)
-		cleanupSocket(common.SOCKET_FILE)
+		cleanupSocket(SOCKET_FILE)
 		os.Exit(0)
 	}
 
 	log.Printf("Deadman Switch EXECUTED!")
-	cleanupSocket(common.SOCKET_FILE)
+	cleanupSocket(SOCKET_FILE)
 	os.Exit(0)
 }
 
