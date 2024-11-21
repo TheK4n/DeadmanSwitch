@@ -1,9 +1,9 @@
 package main
 
 import (
+	common "../common"
 	"fmt"
 	"net"
-    common "../common"
 )
 
 func main() {

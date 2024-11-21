@@ -1,18 +1,17 @@
 package main
 
 import (
+	common "../common"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"math/rand"
-    "os"
-    "fmt"
-    common "../common"
+	"os"
 )
 
-
 func WriteHashFromPassphrase(passphrase string) error {
-    return writeHash(hashPassphrase(passphrase, generateSalt()))
+	return writeHash(hashPassphrase(passphrase, generateSalt()))
 }
 
 func CheckHash(passphrase string) (bool, error) {
@@ -35,7 +34,7 @@ func hashPassphrase(passphrase, salt string) string {
 }
 
 func generateSalt() string {
-    r := rand.New(rand.NewSource(genTrulyRandom()))
+	r := rand.New(rand.NewSource(genTrulyRandom()))
 	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%f", r.Float64())))
 	return hex.EncodeToString(h.Sum(nil))

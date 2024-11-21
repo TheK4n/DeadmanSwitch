@@ -1,13 +1,11 @@
 package common
 
 import (
-    "fmt"
-    "os"
+	"fmt"
+	"os"
 )
 
-
 const SOCKET_FILE string = "/tmp/deadman.sock"
-
 
 func SecureGetPassword() string {
 	var input string
