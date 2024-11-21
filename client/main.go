@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"net"
+    common "../common"
 )
 
 func main() {
-	conn, err := net.Dial("unix", SOCKET_FILE)
+	conn, err := net.Dial("unix", common.SOCKET_FILE)
 
 	if err != nil {
 		fmt.Println("error:", err)
@@ -17,7 +18,7 @@ func main() {
 	conn.Read(reply)
 	fmt.Println(string(reply))
 
-	conn.Write([]byte(secureGetPassword()))
+	conn.Write([]byte(common.SecureGetPassword()))
 
 	reply2 := make([]byte, 1024)
 	conn.Read(reply2)

@@ -1,18 +1,19 @@
-package main
+package common
 
 import (
     "fmt"
     "os"
 )
 
+
 const SOCKET_FILE string = "/tmp/deadman.sock"
 
-// hidden get password from stdin
-func secureGetPassword() string {
+
+func SecureGetPassword() string {
 	var input string
-	fmt.Print("\033[8m") // Hide input
+	fmt.Print("\033[8m")
 	fmt.Scanf("%s", &input)
-	fmt.Print("\033[28m") // Show input
+	fmt.Print("\033[28m")
 	return input
 }
 
@@ -30,8 +31,7 @@ func PowInts(x, n int) int {
 	return x * y * y
 }
 
-// kill program with error
-func kill(msg string, code int) {
+func Kill(msg string, code int) {
 	err := fmt.Errorf(msg)
 	fmt.Println("deadman:", err.Error())
 	os.Exit(code)
