@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 	"path/filepath"
+    "os/signal"
 
 	common "../common"
 )
@@ -21,6 +22,124 @@ var TIME_FILE = PREFIX + "/time"
 var HASH_FILE = PREFIX + "/hash"
 
 
+func main() {
+    sigChan := make(chan os.Signal, 1)
+
+    signal.Notify(
+        sigChan,
+        syscall.SIGHUP,
+        syscall.SIGINT,
+        syscall.SIGTERM,
+    )
+
+    go func() {
+        s := <-sigChan
+        cleanupSocket(common.SOCKET_FILE)
+
+        fmt.Println(s)
+        os.Exit(137)
+    }()
+
+	command := parseCommand(os.Args)
+    handleCommand(command)
+}
+
+func parseCommand(args[] string) string {
+	if len(args) < 2 {
+		common.Kill("Usage: "+args[0]+" COMMAND", 1)
+	}
+	command := args[1]
+	return command
+}
+
+func handleCommand(command string) {
+	switch command {
+        case "run":
+            runDaemon()
+        case "init":
+            initialSetup()
+        default:
+            common.Kill("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
+	}
+}
+
+func runDaemon() {
+    go timeoutDaemon()
+
+    listener, listen_err := net.Listen("unix", common.SOCKET_FILE)
+    if listen_err != nil {
+        cleanupSocket(common.SOCKET_FILE)
+        common.Kill("Error listen socket file" + listen_err.Error(), 1)
+        return
+    }
+
+    chmod_err := os.Chmod(common.SOCKET_FILE, 0660)
+    if chmod_err != nil {
+        cleanupSocket(common.SOCKET_FILE)
+        common.Kill("Error chmod socket file" + chmod_err.Error(), 1)
+        return
+    }
+
+    log.Printf("Server starts")
+    log.Printf("Expires at: " + getExpireMoment())
+
+    for {
+        conn, err := listener.Accept()
+        if err != nil {
+            continue
+        }
+
+        go handleClient(conn)
+    }
+}
+
+func cleanupSocket(socketfile string) {
+    unlink_err := syscall.Unlink(socketfile)
+    if unlink_err != nil {
+        log.Printf("Unlink socket error: " + unlink_err.Error())
+    }
+}
+
+func timeoutDaemon() {
+	for {
+        checkPeriod := 15
+        sleepSeconds(checkPeriod)
+
+		if isExpire() {
+			initDeadmanSwitch()
+			break
+		}
+	}
+}
+
+func handleClient(conn net.Conn) {
+	defer conn.Close()
+
+	buf := make([]byte, 32)
+	for {
+		conn.Write([]byte("Write passphrase:"))
+
+		readLen, readSocketErr := conn.Read(buf)
+		if readSocketErr != nil {
+			fmt.Println(readSocketErr)
+			break
+		}
+
+		isValidHash, _ := CheckHash(string(buf[:readLen]))
+
+		if isValidHash {
+			updateExpireMoment(TIMEOUT_SEC)
+            log.Print("Extended until: " + getExpireMoment())
+			conn.Write([]byte("Extended until: " + getExpireMoment()))
+		} else {
+			conn.Write([]byte("Declined, expires at: " + getExpireMoment()))
+		}
+
+		conn.Close()
+		break
+	}
+}
+
 func writeHash(hash string) error {
     hashfile_dir := filepath.Dir(HASH_FILE)
     err := os.MkdirAll(hashfile_dir, 0700)
@@ -30,27 +149,6 @@ func writeHash(hash string) error {
     }
 	return os.WriteFile(HASH_FILE, []byte(hash), 0600)
 }
-
-func parseCommand() string {
-	if len(os.Args) < 2 {
-		common.Kill("Usage: "+os.Args[0]+" COMMAND", 1)
-	}
-	command := os.Args[1]
-	if !isValidCommand([]string{"run", "init"}, command) {
-		common.Kill("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
-	}
-	return command
-}
-
-func isValidCommand(commands []string, command string) bool {
-	for _, com := range commands {
-		if command == com {
-			return true
-		}
-	}
-	return false
-}
-
 
 func initialSetup() {
     firstPassphrase := askPassphrase()
@@ -67,7 +165,11 @@ func initialSetup() {
         return
     }
 
-    updateTime(TIMEOUT_SEC)
+    updateExpireMomentErr := updateExpireMoment(TIMEOUT_SEC)
+    if updateExpireMomentErr != nil {
+		common.Kill("Error while writing time file", 1)
+        return
+    }
 }
 
 func askPassphrase() string {
@@ -86,11 +188,11 @@ func getRestOfTime() int {
 	return i
 }
 
-func updateTime(seconds int) error {
-	return os.WriteFile(TIME_FILE, []byte(calculateMomentOfExpire(int64(seconds))), 0600)
+func updateExpireMoment(seconds int) error {
+	return os.WriteFile(TIME_FILE, []byte(calculateExpireMoment(int64(seconds))), 0600)
 }
 
-func calculateMomentOfExpire(timeout int64) string {
+func calculateExpireMoment(timeout int64) string {
 	now := time.Now()
     return fmt.Sprintf("%d", now.Unix() + timeout)
 }
@@ -99,22 +201,14 @@ func initDeadmanSwitch() {
     cmd := exec.Command("touch", "/home/thek4n/DEADMAN")
     if err := cmd.Run(); err != nil {
         fmt.Println("Error: ", err)
+        cleanupSocket(common.SOCKET_FILE)
+        os.Exit(0)
     }
 
 	log.Printf("Deadman Switch EXECUTED!")
+
+    cleanupSocket(common.SOCKET_FILE)
 	os.Exit(0)
-}
-
-func timeout() {
-	for {
-        checkPeriod := 15
-        sleepSeconds(checkPeriod)
-
-		if isExpire() {
-			initDeadmanSwitch()
-			break
-		}
-	}
 }
 
 func sleepSeconds(seconds int) {
@@ -125,64 +219,6 @@ func isExpire() bool {
     return getRestOfTime() < int(time.Now().Unix())
 }
 
-func getCurTime() string {
+func getExpireMoment() string {
 	return fmt.Sprintf("%s", time.Unix(int64(getRestOfTime()), 0))
-}
-
-func handleClient(conn net.Conn) {
-	defer conn.Close()
-
-	buf := make([]byte, 32) // buffer for client data
-	for {
-		conn.Write([]byte("Write passphrase:"))
-
-		readLen, err := conn.Read(buf)
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
-
-		isValidHash, err := CheckHash(string(buf[:readLen]))
-		if isValidHash {
-			updateTime(TIMEOUT_SEC)
-            log.Print("Extended until: " + getCurTime())
-			conn.Write([]byte("Extended until: " + getCurTime()))
-		} else {
-			conn.Write([]byte("Declined, expires at: " + getCurTime()))
-		}
-		conn.Close()
-		break
-	}
-}
-
-func main() {
-	os.Remove(common.SOCKET_FILE)
-	syscall.Unlink(common.SOCKET_FILE)
-
-	command := parseCommand()
-
-	switch command {
-	case "run":
-		go timeout()
-
-		listener, _ := net.Listen("unix", common.SOCKET_FILE)
-		os.Open(common.SOCKET_FILE)
-		os.Chown(common.SOCKET_FILE, 0, 1015)
-		os.Chmod(common.SOCKET_FILE, 0660)
-		log.Printf("Server starts")
-		log.Printf("Expires at: " + getCurTime())
-
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				continue
-			}
-
-			go handleClient(conn)
-		}
-	case "init":
-		initialSetup()
-	}
-	syscall.Unlink(common.SOCKET_FILE)
-	os.Remove(common.SOCKET_FILE)
 }
