@@ -24,7 +24,6 @@ func writeHash(hash string) error {
 	return os.WriteFile(HASH_FILE, []byte(hash), 0600)
 }
 
-
 func CheckHash(passphrase string) (bool, error) {
 	storedHashAndSalt, err := os.ReadFile(HASH_FILE)
 	storedSalt := storedHashAndSalt[64:]

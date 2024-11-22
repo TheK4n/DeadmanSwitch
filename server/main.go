@@ -8,9 +8,9 @@ import (
 	"os/exec"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
-	"strings"
 
 	common "github.com/thek4n/DeadmanSwitch/common"
 )
@@ -19,9 +19,9 @@ var PREFIX = os.Getenv("HOME") + "/.local/deadman"
 var TIME_FILE = PREFIX + "/time"
 var HASH_FILE = PREFIX + "/hash"
 var SOCKET_FILE = common.GetSocketPath()
+
 const DEADMAN_TIMEOUT_VARIABLE_NAME = "DEADMAN_TIMEOUT"
 const DEADMAN_COMMAND_VARIABLE_NAME = "DEADMAN_COMMAND"
-
 
 func main() {
 	sigChan := make(chan os.Signal, 1)
@@ -55,26 +55,26 @@ func parseCommand(args []string) string {
 
 func handleCommand(command string) {
 	switch command {
-		case "run":
-			runDaemon()
-		case "init":
-			initialSetup()
-		case "--help":
-			fmt.Println("run\ninit")
-			os.Exit(0)
-		default:
-			common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
-		}
+	case "run":
+		runDaemon()
+	case "init":
+		initialSetup()
+	case "--help":
+		fmt.Println("run\ninit")
+		os.Exit(0)
+	default:
+		common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
+	}
 }
 
 func runDaemon() {
 	if os.Getenv(DEADMAN_COMMAND_VARIABLE_NAME) == "" {
-		common.Die(DEADMAN_COMMAND_VARIABLE_NAME + " variable not set" ,1)
+		common.Die(DEADMAN_COMMAND_VARIABLE_NAME+" variable not set", 1)
 	}
 
 	_, getTimeoutErr := getTimeoutSec()
 	if getTimeoutErr != nil {
-		common.Die(DEADMAN_TIMEOUT_VARIABLE_NAME +" is invalid" ,1)
+		common.Die(DEADMAN_TIMEOUT_VARIABLE_NAME+" is invalid", 1)
 	}
 
 	go timeoutDaemon()
@@ -163,34 +163,33 @@ func handleClient(conn net.Conn) {
 			break
 		}
 
-		if ! isValidHash {
+		if !isValidHash {
 			conn.Write([]byte("Declined, expires at: " + getExpireMoment()))
 			conn.Close()
 			break
 		}
 
 		switch command {
-			case "extend":
+		case "extend":
+			timeoutSec, _ := getTimeoutSec()
 
-				timeoutSec, _ := getTimeoutSec()
-
-				updateExpireMomentErr := updateExpireMoment(timeoutSec)
-				if updateExpireMomentErr != nil {
-					fmt.Println("Update expire moment error" + updateExpireMomentErr.Error())
-					conn.Close()
-					break
-				}
-
-				log.Print("Extended until: " + getExpireMoment())
-				conn.Write([]byte("Extended until: " + getExpireMoment()))
-
+			updateExpireMomentErr := updateExpireMoment(timeoutSec)
+			if updateExpireMomentErr != nil {
+				fmt.Println("Update expire moment error" + updateExpireMomentErr.Error())
 				conn.Close()
 				break
+			}
 
-			case "execute":
-				initDeadmanSwitch()
-				conn.Close()
-				break
+			log.Print("Extended until: " + getExpireMoment())
+			conn.Write([]byte("Extended until: " + getExpireMoment()))
+
+			conn.Close()
+			break
+
+		case "execute":
+			initDeadmanSwitch()
+			conn.Close()
+			break
 		}
 
 		conn.Write([]byte("Declined, expires at: " + getExpireMoment()))

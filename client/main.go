@@ -24,15 +24,15 @@ func parseCommand(args []string) string {
 
 func handleCommand(command string) {
 	switch command {
-		case "execute":
-			sendToServer(command)
-		case "extend":
-			sendToServer(command)
-		case "--help":
-			fmt.Println("execute\nextend")
-			os.Exit(0)
-		default:
-			common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
+	case "execute":
+		sendToServer(command)
+	case "extend":
+		sendToServer(command)
+	case "--help":
+		fmt.Println("execute\nextend")
+		os.Exit(0)
+	default:
+		common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
 	}
 }
 
