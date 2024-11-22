@@ -5,8 +5,10 @@ import (
 	"os"
 )
 
+const DEADMAN_SOCKET_VARIABLE_NAME = "DEADMAN_SOCKET"
+
 func GetSocketPath() string {
-	socketEnv := os.Getenv("DEADMAN_SOCKET")
+	socketEnv := os.Getenv(DEADMAN_SOCKET_VARIABLE_NAME)
 
 	if socketEnv != "" {
 		return socketEnv
