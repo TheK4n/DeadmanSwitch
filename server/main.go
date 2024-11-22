@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -199,16 +198,6 @@ func handleClient(conn net.Conn) {
 		break
 
 	}
-}
-
-func writeHash(hash string) error {
-	hashfile_dir := filepath.Dir(HASH_FILE)
-	err := os.MkdirAll(hashfile_dir, 0700)
-
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(HASH_FILE, []byte(hash), 0600)
 }
 
 func initialSetup() {

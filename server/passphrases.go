@@ -7,11 +7,23 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 )
 
 func WriteHashFromPassphrase(passphrase string) error {
 	return writeHash(hashPassphrase(passphrase, generateSalt()))
 }
+
+func writeHash(hash string) error {
+	hashfile_dir := filepath.Dir(HASH_FILE)
+	err := os.MkdirAll(hashfile_dir, 0700)
+
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(HASH_FILE, []byte(hash), 0600)
+}
+
 
 func CheckHash(passphrase string) (bool, error) {
 	storedHashAndSalt, err := os.ReadFile(HASH_FILE)
