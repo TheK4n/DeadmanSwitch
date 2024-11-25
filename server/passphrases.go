@@ -68,8 +68,7 @@ func genTrulyRandom() int64 {
 	file, _ := os.Open("/dev/urandom")
 	defer file.Close()
 
-	const maxSz = 256
-	b := make([]byte, maxSz)
+	b := make([]byte, 256)
 	file.Read(b)
 
 	return int64(binary.BigEndian.Uint64(b))

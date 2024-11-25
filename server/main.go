@@ -157,9 +157,9 @@ func handleClient(conn net.Conn) {
 		}
 
 		command := messageFromClient[0]
-		hash := messageFromClient[1]
+		passphrase := messageFromClient[1]
 
-		isValidHash, checkHashError := CheckHash(hash)
+		isValidHash, checkHashError := CheckHash(passphrase)
 
 		if checkHashError != nil {
 			fmt.Println("Check hash error" + checkHashError.Error())
@@ -199,7 +199,6 @@ func handleClient(conn net.Conn) {
 		conn.Write([]byte("Declined, expires at: " + getExpireMoment()))
 		conn.Close()
 		break
-
 	}
 }
 
