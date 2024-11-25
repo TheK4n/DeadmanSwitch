@@ -24,6 +24,13 @@ const DEADMAN_TIMEOUT_VARIABLE_NAME = "DEADMAN_TIMEOUT"
 const DEADMAN_COMMAND_VARIABLE_NAME = "DEADMAN_COMMAND"
 
 func main() {
+	handleSignals()
+
+	command := parseCommand(os.Args)
+	handleCommand(command)
+}
+
+func handleSignals() {
 	sigChan := make(chan os.Signal, 1)
 
 	signal.Notify(
@@ -40,9 +47,6 @@ func main() {
 		fmt.Println(s)
 		os.Exit(137)
 	}()
-
-	command := parseCommand(os.Args)
-	handleCommand(command)
 }
 
 func parseCommand(args []string) string {
