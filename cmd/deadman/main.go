@@ -5,7 +5,7 @@ import (
 	"net"
 	"os"
 
-	common "internal/common"
+	common "github.com/thek4n/DeadmanSwitch/internal/common"
 )
 
 var SOCKET_FILE = common.GetSocketPath()

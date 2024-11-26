@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	passphrases "pkg/passphrases"
-	common "internal/common"
+	passphrases "github.com/thek4n/DeadmanSwitch/pkg/passphrases"
+	common "github.com/thek4n/DeadmanSwitch/internal/common"
 )
 
 var PREFIX = os.Getenv("HOME") + "/.local/deadman"
