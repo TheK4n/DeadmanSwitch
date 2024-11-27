@@ -210,8 +210,7 @@ func initialSetup() {
 		return
 	}
 
-	firstPassphrase := askPassphrase()
-	secondPassphrase := askPassphrase()
+	firstPassphrase, secondPassphrase := askPassphraseTwice()
 
 	if !isPassphrasesMatch(firstPassphrase, secondPassphrase) {
 		common.Die("Passphrases didnt match", 1)
@@ -231,10 +230,14 @@ func initialSetup() {
 	}
 }
 
-func askPassphrase() string {
+func askPassphraseTwice() (string, string) {
 	fmt.Print("Input passphrase: ")
-	inputPassphrase := common.SecureGetPassword()
-	return inputPassphrase
+	firstPassphrase := common.SecureGetPassword()
+
+	fmt.Print("Repeat passphrase: ")
+	secondPassphrase := common.SecureGetPassword()
+
+	return firstPassphrase, secondPassphrase
 }
 
 func isPassphrasesMatch(firstPassphrase string, secondPassphrase string) bool {
