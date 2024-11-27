@@ -205,9 +205,8 @@ func handleClient(conn net.Conn) {
 
 func initialSetup() {
 	timeoutSec, getTimeoutErr := getTimeoutSec()
-
 	if getTimeoutErr != nil {
-		common.Die("Error while handle timeout sec", 1)
+		common.Die(DEADMAN_TIMEOUT_VARIABLE_NAME+" is invalid", 1)
 		return
 	}
 
