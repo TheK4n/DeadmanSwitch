@@ -82,6 +82,7 @@ func runDaemon() {
 		TimeFile: TIME_FILE,
 		Switcher: switcher.ShellCommandSwitcher{Command: deadmanCommand},
 	}
+
 	go d.Run()
 
 	listener, listenErr := net.Listen("unix", SOCKET_FILE)
@@ -121,6 +122,7 @@ func handleClient(conn net.Conn, d daemon.Daemon) {
 		if writeErr != nil {
 			log.Print("Error communicate via socket: " + writeErr.Error())
 			conn.Close()
+			cleanupSocket(SOCKET_FILE)
 			break
 		}
 
@@ -128,6 +130,7 @@ func handleClient(conn net.Conn, d daemon.Daemon) {
 		if readSocketErr != nil {
 			fmt.Println(readSocketErr.Error())
 			conn.Close()
+			cleanupSocket(SOCKET_FILE)
 			break
 		}
 
@@ -137,18 +140,22 @@ func handleClient(conn net.Conn, d daemon.Daemon) {
 			momentOfExpiration, _ := d.GetMomentOfExpiration()
 			conn.Write([]byte("Declined, expires at: " + string(momentOfExpiration)))
 			conn.Close()
+			cleanupSocket(SOCKET_FILE)
 			break
 		}
 
 		command := messageFromClient[0]
 		passphrase := messageFromClient[1]
 
-		isValidHash := passphrases.CheckHash(passphrase, HASH_FILE)
+		a, _ := os.ReadFile(HASH_FILE)
+		isValidHash := passphrases.CheckHash(passphrase, string(a))
 
 		if !isValidHash {
 			momentOfExpiration, _ := d.GetMomentOfExpiration()
 			conn.Write([]byte("Declined, expires at: " + string(momentOfExpiration)))
 			conn.Close()
+
+			cleanupSocket(SOCKET_FILE)
 			break
 		}
 
@@ -160,6 +167,8 @@ func handleClient(conn net.Conn, d daemon.Daemon) {
 			if updateExpireMomentErr != nil {
 				fmt.Println("Update expire moment error" + updateExpireMomentErr.Error())
 				conn.Close()
+
+				cleanupSocket(SOCKET_FILE)
 				break
 			}
 
@@ -168,17 +177,32 @@ func handleClient(conn net.Conn, d daemon.Daemon) {
 			conn.Write([]byte("Extended until: " + string(momentOfExpiration)))
 
 			conn.Close()
+
+			cleanupSocket(SOCKET_FILE)
 			break
 
 		case "execute":
-			d.Switcher.Execute()
+			res, err := d.Switcher.Execute()
+
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+
+			fmt.Println(string(res))
+
+			conn.Write([]byte("Executed"))
 			conn.Close()
+
+			cleanupSocket(SOCKET_FILE)
 			break
 		}
 
 		momentOfExpiration, _ := d.GetMomentOfExpiration()
 		conn.Write([]byte("Declined, expires at: " + string(momentOfExpiration)))
+
 		conn.Close()
+
+		cleanupSocket(SOCKET_FILE)
 		break
 	}
 }
@@ -228,8 +252,8 @@ func isPassphrasesMatch(firstPassphrase string, secondPassphrase string) bool {
 	return firstPassphrase == secondPassphrase
 }
 
-func getTimeoutSec() (int, error) {
-	return strconv.Atoi(os.Getenv(DEADMAN_TIMEOUT_VARIABLE_NAME))
+func getTimeoutSec() (int64, error) {
+	return strconv.ParseInt(os.Getenv(DEADMAN_TIMEOUT_VARIABLE_NAME), 10, 64)
 }
 
 
@@ -247,8 +271,9 @@ func writeHash(hash string, hashFile string) error {
 	return os.WriteFile(hashFile, []byte(hash), 0600)
 }
 
-func updateExpireMoment(seconds int) error {
-	return os.WriteFile(TIME_FILE, []byte(string(calculateExpireMoment(int64(seconds)))), 0600)
+func updateExpireMoment(seconds int64) error {
+	expireMoment := calculateExpireMoment(seconds)
+	return os.WriteFile(TIME_FILE, []byte(strconv.FormatInt(expireMoment, 10)), 0600)
 }
 
 func calculateExpireMoment(timeout int64) int64 {

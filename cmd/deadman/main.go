@@ -33,6 +33,7 @@ func main() {
 			die(1, "%s", err.Error())
 		}
 
+		fmt.Print("Input passphrase: ")
 		passphrase := secureGetPassword()
 		client := DeadmanClient{conn}
 		err = client.sendToServer(os.Args[1], passphrase)

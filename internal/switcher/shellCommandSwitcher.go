@@ -1,9 +1,8 @@
 package switcher
 
-
 import (
-	"strings"
 	"os/exec"
+	"strings"
 )
 
 type ShellCommandSwitcher struct {

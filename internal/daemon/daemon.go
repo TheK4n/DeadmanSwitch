@@ -1,26 +1,26 @@
 package daemon
 
 import (
+	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
-	"log"
 
 	"github.com/thek4n/DeadmanSwitch/internal/switcher"
 )
 
 
 type Daemon struct {
-	Timeout int
+	Timeout int64
 	TimeFile string
 	Switcher switcher.Switcher
 }
 
 func (d Daemon) Run() {
-	checkPeriod := 15
+	checkPeriod := 3
 	for {
 		sleepSeconds(checkPeriod)
-
 		momentOfExpiration, err := d.GetMomentOfExpiration()
 		if err != nil {
 			log.Printf("error: %s", err.Error())
@@ -28,8 +28,15 @@ func (d Daemon) Run() {
 		}
 
 		if d.isExpire(momentOfExpiration) {
-			d.Switcher.Execute()
-			break
+			res, err := d.Switcher.Execute()
+
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+
+			fmt.Println(string(res))
+			fmt.Println("DEADMAN executed!")
+			os.Exit(1)
 		}
 	}
 }
