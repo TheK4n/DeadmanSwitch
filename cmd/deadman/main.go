@@ -4,54 +4,92 @@ import (
 	"fmt"
 	"net"
 	"os"
-
-	common "github.com/thek4n/DeadmanSwitch/internal/common"
+	"path/filepath"
 )
 
-var SOCKET_FILE = common.GetSocketPath()
+const HELP_MESSAGE string = `deadman - DeadmanSwitch client
+
+Usage: deadmand <COMMAND>
+
+Commands:
+	extend - extend server fault timeout
+	execute - forcely execute server fault command
+`
 
 func main() {
-	handleCommand(parseCommand(os.Args))
-}
-
-func parseCommand(args []string) string {
-	if len(args) < 2 {
-		common.Die("Usage: "+args[0]+" COMMAND", 1)
+	if len(os.Args) < 2 {
+		die(1, "Usage: %s <COMMAND>", os.Args[0])
 	}
-	command := args[1]
-	return command
-}
 
-func handleCommand(command string) {
-	switch command {
-	case "execute":
-		sendToServer(command)
-	case "extend":
-		sendToServer(command)
+	socketFile := os.Getenv("DEADMAN_SOCKET")
+	if socketFile == "" {
+		socketFile = "/tmp/deadman.sock"
+	}
+
+	switch os.Args[1] {
+	case "execute", "extend":
+		conn, err := net.Dial("unix", socketFile)
+		if err != nil {
+			die(1, "%s", err.Error())
+		}
+
+		passphrase := secureGetPassword()
+		client := DeadmanClient{conn}
+		err = client.sendToServer(os.Args[1], passphrase)
+		if err != nil {
+			die(1, "%s", err.Error())
+		}
+
 	case "--help":
-		fmt.Println("execute\nextend")
+		fmt.Print(HELP_MESSAGE)
 		os.Exit(0)
 	default:
-		common.Die("'"+os.Args[1]+"' is not a "+os.Args[0]+" command.", 1)
+		die(1, "'%s' is not a %s command", os.Args[1], os.Args[0])
 	}
 }
 
-func sendToServer(command string) {
-	conn, err := net.Dial("unix", SOCKET_FILE)
+func secureGetPassword() string {
+	var input string
+	fmt.Print("\033[8m")
+	fmt.Scanf("%s", &input)
+	fmt.Print("\033[28m")
+	return input
+}
 
+type DeadmanClient struct {
+	conn net.Conn
+}
+
+func (cl *DeadmanClient) sendToServer(command string, passphrase string) error {
+	reply := make([]byte, 1024)
+
+	_, err := cl.conn.Read(reply)
 	if err != nil {
-		fmt.Println("error:", err)
-		return
+		return err
 	}
 
-	reply := make([]byte, 1024)
-	conn.Read(reply)
 	fmt.Println(string(reply))
 
-	messageToServer := command + " " + common.SecureGetPassword()
-	conn.Write([]byte(messageToServer))
+	messageToServer := command + " " + passphrase
+	_, err = cl.conn.Write([]byte(messageToServer))
+	if err != nil {
+		return err
+	}
 
 	reply2 := make([]byte, 1024)
-	conn.Read(reply2)
+	_, err = cl.conn.Read(reply2)
+	if err != nil {
+		return err
+	}
+
 	fmt.Println(string(reply2))
+	return nil
+}
+
+
+func die(code int, format string, a ...any) {
+	_, programName := filepath.Split(os.Args[0])
+
+	fmt.Fprintf(os.Stderr, fmt.Sprintf("%s: error: ", programName) + format, a...)
+	os.Exit(code)
 }
